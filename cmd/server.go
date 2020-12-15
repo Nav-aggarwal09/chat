@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/challenge/pkg/auth"
 	"github.com/challenge/pkg/controller"
+	"github.com/challenge/pkg/database"
 	"os"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -33,14 +34,14 @@ func main() {
 		fmt.Fprintf(os.Stderr, "could not open database chat.db: %v\n", err)
 		os.Exit(1)
 	}
-	stmt, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS "Users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT,"username" text NOT NULL UNIQUE ,"password" text NOT NULL UNIQUE);`)
+	stmt, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS "Users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT,"username" text NOT NULL UNIQUE ,"password" text NOT NULL);`)
 	_, err = stmt.Exec()
 	if err != nil {
 		log.Error("Error creating users table")
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
+	database.DBCon = db
 	log.Info("opened sql connection")
 	h := controller.Handler{}
 
@@ -63,7 +64,6 @@ func main() {
 			http.Error(w, http.StatusText(405), http.StatusMethodNotAllowed)
 			return
 		}
-		log.Debug("\nconfirmed request method is POST")
 		h.CreateUser(w, r)
 	})
 

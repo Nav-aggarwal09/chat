@@ -1,14 +1,12 @@
 package models
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/challenge/pkg/database"
 	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
-	"os"
 )
 
 type User struct {
@@ -19,38 +17,59 @@ type User struct {
 
 //
 func CreateUser(createPayload string) (int, error) {
+	/*
+		1. unmarshal client information from given string
+		2. check if username already exists and non-nil credentials
+		3. insert into DB
+		4. return ID
+	*/
 	var newUser User
 	var err error
-	ID := 0
 	err = json.Unmarshal([]byte(createPayload), &newUser)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not unmarshall into struct: %v\n", err)
+		log.Errorf("could not unmarshall into struct: %v\n", err)
 		return 0, err
 	}
 	log.Debugf("Unmarshaled user create payload to %+v", newUser)
+	if newUser.Username == "" || newUser.Password == "" {
+		return 0, errors.New(fmt.Sprintf("Please give a non-empty username or password"))
+	}
 	_, usrExists := UserExists(newUser.Username)
 	if usrExists {
 		return 0, errors.New(fmt.Sprintf("user %s already exists. Please choose another", newUser.Username))
 	}
+
 	// TODO: encrypt Password w SHA1 & Salt
-	err = database.DBCon.QueryRow(`INSERT INTO users (NULL, ?, ?)`, newUser.Username, newUser.Password).Scan(&ID)
+	addUser, err := database.DBCon.Prepare(`INSERT INTO Users (username, password) values ($1, $2)`)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not insert new user: %v\n", err)
+		log.Errorf("Could not prepare query to insert new user: %v", err)
 		return 0, err
 	}
-	return ID, nil
+
+	result, err := addUser.Exec(newUser.Username, newUser.Password)
+	if err != nil {
+		log.Errorf("Could not execute query to insert new user: %v", err)
+		return 0, err
+	}
+	id, _ := result.LastInsertId()
+	log.Info("Successfully created new user with id ", id)
+	return int(id), nil
+
 }
 
 // UserExists returns true if given Username exists and false if not
-func UserExists(Username string) (*sql.Row, bool) {
+func UserExists(Username string) (User, bool) {
 	log.Debugf("Checking if user %s exists", Username)
-	sqlStmt := `SELECT 1 FROM users WHERE username = ?`
-	row := database.DBCon.QueryRow(sqlStmt, Username)
-	fmt.Println("Row Query returned: ", row)
-	if row != nil {
-		return row, true
+	var newUser User
+	row := database.DBCon.QueryRow(`SELECT id, username, password FROM Users WHERE username = ?`, Username)
+	_ = row.Scan(&newUser.ID, &newUser.Username, &newUser.Password)
+	log.Debugf("UserExists query returned - ID %d username %s password %s", newUser.ID, newUser.Username, newUser.Password)
+
+	if newUser.Username == "" {
+		log.Debug("Username not found")
+		return User{}, false
 	} else {
-		return nil, false
+		return newUser, true
 	}
 
 }
@@ -66,27 +85,19 @@ func AuthenticateUser(loginPayload string) (int, string, error) {
 	*/
 	log.Debug("Entered AuthenticateUser()")
 	var newUser User
-	var id int
-	var actualUsername string
-	var actualPassword string
 	err := json.Unmarshal([]byte(loginPayload), &newUser)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not unmarshall into struct: %v\n", err)
+		log.Errorf("could not unmarshall into struct: %v", err)
 		return 0, "", err
 	}
 	log.Debugf("Unmarshaled user login payload to %+v", newUser)
-	usrRow, usrExists := UserExists(newUser.Username)
+	dbUsr, usrExists := UserExists(newUser.Username)
 	if !usrExists {
-		return 0, "", errors.New(fmt.Sprintf("user %s does not exist. Please ", newUser.Username))
+		return 0, "", errors.New(fmt.Sprintf("user %s does not exist", newUser.Username))
 	}
-	err = usrRow.Scan(&id, &actualUsername, &actualPassword)
-	if err == sql.ErrNoRows {
-		return 0, "", errors.New("No rows returned")
+	if newUser.Password != dbUsr.Password {
+		return 0, "", errors.New("Invalid password")
 	}
-	if newUser.Password == actualPassword {
-		log.Debug("Passwords matched")
-		return id, "token", nil
-	}
-	return 0, "", errors.New("Invalid password")
-
+	log.Debug("Passwords matched")
+	return dbUsr.ID, "token", nil
 }
