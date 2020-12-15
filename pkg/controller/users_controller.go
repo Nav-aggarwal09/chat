@@ -2,16 +2,18 @@ package controller
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/challenge/pkg/helpers"
 	"github.com/challenge/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 )
 
+type createdUser struct {
+	Id int
+}
+
 // CreateUser creates a new user
 func (h Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("\nentered CreateUser handler")
 	buff := new(bytes.Buffer)
 	buff.ReadFrom(r.Body)
 	createUserStr := buff.String()
@@ -20,6 +22,5 @@ func (h Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 	}
-	// TODO: Create a New User
-	helpers.RespondJSON(w, id)
+	helpers.RespondJSON(w, createdUser{Id: id})
 }
