@@ -40,13 +40,13 @@ func CreateUser(createPayload string) (int, error) {
 	}
 
 	// TODO: encrypt Password w SHA1 & Salt
-	addUser, err := database.DBCon.Prepare(`INSERT INTO Users (username, password) values ($1, $2)`)
+	addUsrStatement, err := database.DBCon.Prepare(`INSERT INTO Users (username, password) values ($1, $2)`)
 	if err != nil {
 		log.Errorf("Could not prepare query to insert new user: %v", err)
 		return 0, err
 	}
 
-	result, err := addUser.Exec(newUser.Username, newUser.Password)
+	result, err := addUsrStatement.Exec(newUser.Username, newUser.Password)
 	if err != nil {
 		log.Errorf("Could not execute query to insert new user: %v", err)
 		return 0, err

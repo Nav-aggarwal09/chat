@@ -9,7 +9,7 @@ import (
 )
 
 type createdUser struct {
-	id int
+	Id int
 }
 
 // CreateUser creates a new user
@@ -22,5 +22,5 @@ func (h Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 	}
-	helpers.RespondJSON(w, createdUser{id: id})
+	helpers.RespondJSON(w, createdUser{Id: id})
 }
