@@ -14,10 +14,12 @@ type createdUser struct {
 
 // CreateUser creates a new user
 func (h Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	// converting io.ReadCloser to string to pass pass around to server
 	buff := new(bytes.Buffer)
 	buff.ReadFrom(r.Body)
 	createUserStr := buff.String()
 	log.Debug("converted request payload to string: ", createUserStr)
+
 	id, err := models.CreateUser(createUserStr)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
