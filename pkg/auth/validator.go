@@ -41,7 +41,8 @@ func ValidateUser(_ http.HandlerFunc) http.HandlerFunc {
 		if givenTok != dbToken {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
 		}
-		if dbTimestamp.After(dbTimestamp.Add(time.Hour*3)) {
+		if dbTimestamp.After(dbTimestamp.Add(time.Hour * 3)) {
+			// if invalid, null it out in the DB and force user to get new token by logging in again
 			addUsrStatement, _ := database.DBCon.Prepare(`UPDATE Users SET token = NULL, timestamp = NULL WHERE token = dbtoken`)
 			addUsrStatement.Exec()
 			http.Error(w, "Expired token", http.StatusUnauthorized)
