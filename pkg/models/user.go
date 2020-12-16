@@ -15,13 +15,14 @@ type User struct {
 	Password string `json:"Password"`
 }
 
-//
+//CreateUser enters the requesting User credentials into the DB if valid
 func CreateUser(createPayload string) (int, error) {
 	/*
 		1. unmarshal client information from given string
 		2. check if username already exists and non-nil credentials
-		3. insert into DB
-		4. return ID
+		3. Encrypt password
+		4. insert into DB
+		5. return ID
 	*/
 	var newUser User
 	var err error
@@ -39,7 +40,7 @@ func CreateUser(createPayload string) (int, error) {
 		return 0, errors.New(fmt.Sprintf("user %s already exists. Please choose another", newUser.Username))
 	}
 
-	// TODO: encrypt Password w SHA1 & Salt
+	// TODO: this is where we would encrypt Password w SHA1 & Salt
 	addUsrStatement, err := database.DBCon.Prepare(`INSERT INTO Users (username, password) values ($1, $2)`)
 	if err != nil {
 		log.Errorf("Could not prepare query to insert new user: %v", err)
@@ -74,6 +75,7 @@ func UserExists(Username string) (User, bool) {
 
 }
 
+// AuthenticateUser authenticates the requesting User by checking credentials with database
 func AuthenticateUser(loginPayload string) (int, string, error) {
 	/*
 		1. unmarshal
@@ -99,5 +101,7 @@ func AuthenticateUser(loginPayload string) (int, string, error) {
 		return 0, "", errors.New("Invalid password")
 	}
 	log.Debug("Passwords matched")
-	return dbUsr.ID, "token", nil
+
+	token := AddTokenAndTimeStamp(newUser.Username)
+	return dbUsr.ID, token, nil
 }

@@ -21,20 +21,25 @@ const (
 	MessagesEndpoint = "/messages"
 )
 
-//type dbUsers struct {
-//	db *sql.DB
-//}
 
 func main() {
 	var err error
+	// using a logging framework to keep track of server errors and actions
 	log.SetLevel(log.DebugLevel)
-	log.Debug("entered main.go")
+	log.Info("starting program...")
+
 	db, err := sql.Open("sqlite3", "./chat.db")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not open database chat.db: %v\n", err)
 		os.Exit(1)
 	}
-	stmt, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS "Users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT,"username" text NOT NULL UNIQUE ,"password" text NOT NULL);`)
+
+	stmt, _ := db.Prepare(`CREATE TABLE IF NOT EXISTS "Users" (
+		"id" INTEGER PRIMARY KEY AUTOINCREMENT,
+		"username" text NOT NULL UNIQUE ,
+		"password" text NOT NULL,
+		"token" text,
+		"timestamp" text);`)
 	_, err = stmt.Exec()
 	if err != nil {
 		log.Error("Error creating users table")
